@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+VENV_DIR="${VENV_DIR:-$ROOT_DIR/.venv}"
+PYTHON_BIN="${PYTHON_BIN:-}"
+
+python_version_supported() {
+    "$1" - <<'PY' >/dev/null 2>&1
+import sys
+raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
+PY
+}
+
+choose_python() {
+    if [[ -n "$PYTHON_BIN" ]]; then
+        if ! python_version_supported "$PYTHON_BIN"; then
+            echo "Specified PYTHON_BIN must be Python 3.11 or newer." >&2
+            exit 1
+        fi
+        echo "$PYTHON_BIN"
+        return
+    fi
+
+    for candidate in python3.11 python3.12 python3.13 python3.14 python3; do
+        if command -v "$candidate" >/dev/null 2>&1 && python_version_supported "$candidate"; then
+            echo "$candidate"
+            return
+        fi
+    done
+
+    echo "No suitable Python interpreter found. Install Python 3.11 or newer and re-run." >&2
+    exit 1
+}
+
+venv_needs_rebuild() {
+    if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+        return 0
+    fi
+
+    if ! "$VENV_DIR/bin/python" - <<'PY' >/dev/null 2>&1
+import importlib.util
+import sys
+
+has_pip = importlib.util.find_spec('pip') is not None
+raise SystemExit(0 if sys.version_info >= (3, 11) and has_pip else 1)
+PY
+    then
+        return 0
+    fi
+
+    return 1
+}
+
+python_bin="$(choose_python)"
+
+echo "Using Python interpreter: $python_bin"
+"$python_bin" --version
+
+if venv_needs_rebuild; then
+    rm -rf "$VENV_DIR"
+    "$python_bin" -m venv "$VENV_DIR"
+fi
+
+# shellcheck disable=SC1090
+source "$VENV_DIR/bin/activate"
+
+if ! python -m pip --version >/dev/null 2>&1; then
+    python -m ensurepip --upgrade
+fi
+
+python -m pip install --upgrade pip wheel
+
+case "$(uname -s)" in
+    Darwin)
+        if ! command -v brew >/dev/null 2>&1; then
+            echo "Homebrew is required on macOS to install Ink/Stitch build dependencies." >&2
+            echo "Install Homebrew first, then re-run this command." >&2
+            exit 1
+        fi
+
+        brew_packages=(gtk+3 pkg-config gobject-introspection geos libffi gettext jq gnu-getopt cairo)
+        missing_packages=()
+        for package in "${brew_packages[@]}"; do
+            if ! brew list --versions "$package" >/dev/null 2>&1; then
+                missing_packages+=("$package")
+            fi
+        done
+
+        if [[ ${#missing_packages[@]} -gt 0 ]]; then
+            echo "Installing Homebrew packages: ${missing_packages[*]}"
+            brew install "${missing_packages[@]}"
+        fi
+
+        brew_prefix="$(brew --prefix)"
+        libffi_prefix="$(brew --prefix libffi)"
+        gettext_prefix="$(brew --prefix gettext)"
+
+        export PATH="$gettext_prefix/bin:$PATH"
+        export LDFLAGS="-L$libffi_prefix/lib ${LDFLAGS:-}"
+        export CPPFLAGS="-I$libffi_prefix/include ${CPPFLAGS:-}"
+        export PKG_CONFIG_PATH="$libffi_prefix/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+        export GI_TYPELIB_PATH="$brew_prefix/lib/girepository-1.0:${GI_TYPELIB_PATH:-}"
+
+        python -m pip install pycairo
+        python -m pip install PyGObject
+        python -m pip install wxPython
+        ;;
+    Linux)
+        python -m pip install pycairo
+        python -m pip install PyGObject==3.50.0
+
+        if python - <<'PY'
+import platform
+import sys
+
+is_cp311 = sys.version_info[:2] == (3, 11)
+is_x86_64 = platform.machine() == 'x86_64'
+raise SystemExit(0 if is_cp311 and is_x86_64 else 1)
+PY
+        then
+            linux_wx_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04/wxPython-4.2.2-cp311-cp311-linux_x86_64.whl"
+            python -m pip install "$linux_wx_url" || python -m pip install wxPython
+        else
+            python -m pip install wxPython
+        fi
+        ;;
+    *)
+        echo "Unsupported OS for helper bootstrap: $(uname -s)" >&2
+        echo "Create a virtualenv manually and install requirements-build.txt" >&2
+        exit 1
+        ;;
+esac
+
+python -m pip install -r "$ROOT_DIR/requirements-build.txt"
+
+if ! command -v inkscape >/dev/null 2>&1; then
+    echo
+    echo "Warning: 'inkscape' is not on PATH. 'make inx' uses the Inkscape CLI to find bundled inkex." >&2
+fi
+
+echo
+echo "Contributor/build environment created in: $VENV_DIR"
+echo "Activate it with: source $VENV_DIR/bin/activate"
+echo "Then run: make inx"

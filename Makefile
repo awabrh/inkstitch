@@ -13,6 +13,10 @@ distlocal:
 manual:
 	make inx
 
+.PHONY: setup-python-env
+setup-python-env:
+	bash bin/setup-python-environment
+
 .PHONY: inx
 inx: version locales
 	python bin/generate-inx-files;

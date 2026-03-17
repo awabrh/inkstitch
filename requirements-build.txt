@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Additional packages used by local build and packaging workflows.
+pandas
+pyarrow
+pyinstaller
