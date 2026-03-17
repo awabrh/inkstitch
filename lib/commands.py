@@ -67,7 +67,6 @@ FREE_MOVEMENT_OBJECT_COMMANDS = ["autoroute_start", "autoroute_end"]
 LAYER_COMMANDS = ["ignore_layer"]
 GLOBAL_COMMANDS = ["origin", "stop_position"]
 
-
 class CommandParseError(Exception):
     pass
 

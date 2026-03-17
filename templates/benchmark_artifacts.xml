@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension translationdomain="inkstitch" xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <name>embroidery benchmark artifact bundle output</name>
+    <id>org.{{ id_inkstitch }}.output.benchmark_artifacts</id>
+    <output>
+        <extension>.zip</extension>
+        <mimetype>application/zip</mimetype>
+        <filetypename>{{ menu_inkstitch }}: Benchmark Artifact Bundle (.zip)</filetypename>
+        <filetypetooltip>Create a deterministic zip bundle of stitch-plan benchmark artifacts</filetypetooltip>
+        <dataloss>true</dataloss>
+    </output>
+    <param name="extension" type="string" gui-hidden="true">benchmark_artifacts</param>
+    <param name="custom-file-name" type="string" gui-text="Custom file name"
+       gui-description="Defines the file names inside the zip archive. Leave empty for the document file name."></param>
+    <param name="float-precision" type="int" min="0" max="8" gui-text="Float precision">4</param>
+    <spacer />
+    <param name="notebook" type="notebook">
+      <page name="artifacts" gui-text="Artifacts">
+        <label>Always included: manifest.json, metadata.json, stitch_plan.json, stats.json, threads.json</label>
+        <spacer />
+        <param name="include-source-svg" type="boolean" gui-text="Include source SVG">true</param>
+        <param name="include-preview-svg" type="boolean" gui-text="Include stitch plan preview SVG">true</param>
+        <param name="include-validation-json" type="boolean" gui-text="Include validation JSON">true</param>
+        <param name="include-trace-csv" type="boolean" gui-text="Include trace CSV">false</param>
+      </page>
+      <page name="info" gui-text="Help">
+        <label appearance="header">Benchmark Artifact Bundle</label>
+        <label>Create machine-readable benchmark outputs for clean-room comparisons and regression tests.</label>
+        <separator />
+        <label>If objects are selected, only the current selection is processed.</label>
+        <label>This development-only export is intended for generating reference artifacts, not production embroidery output.</label>
+      </page>
+    </param>
+    <script>
+        {{ command_tag | safe }}
+    </script>
+</inkscape-extension>

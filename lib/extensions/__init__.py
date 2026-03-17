@@ -10,6 +10,7 @@ from .apply_threadlist import ApplyThreadlist
 from .auto_run import AutoRun
 from .auto_satin import AutoSatin
 from .batch_lettering import BatchLettering
+from .benchmark_artifacts import BenchmarkArtifacts
 from .break_apart import BreakApart
 from .cleanup import Cleanup
 from .commands_scale_symbols import CommandsScaleSymbols
@@ -90,6 +91,7 @@ extensions = [
     AutoRun,
     AutoSatin,
     BatchLettering,
+    BenchmarkArtifacts,
     BreakApart,
     Cleanup,
     CommandsScaleSymbols,
